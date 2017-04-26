@@ -38,30 +38,13 @@ void loop()
 {
   sendCommand(0x44);  // set single address
  
-  int char_1 = keyboard[random(0, 15)];
-  int char_2 = keyboard[random(0, 15)];
-  int char_3 = keyboard[random(0, 15)];
-  int char_4 = keyboard[random(0, 15)];
+  for (int i = 0; i < 8; ++i) {
+    int char_to_display = KEYBOARD[random(0, 15)];
+    digitalWrite(strobe, LOW);
+    shiftOut(data, clock, LSBFIRST, DISPLAYS[i]);
+    shiftOut(data, clock, LSBFIRST, char_to_display);
+    digitalWrite(strobe, HIGH);
+  }
 
-  digitalWrite(strobe, LOW);
-  shiftOut(data, clock, LSBFIRST, 0xc4);
-  shiftOut(data, clock, LSBFIRST, char_1);
-  digitalWrite(strobe, HIGH);
-
-  digitalWrite(strobe, LOW);
-  shiftOut(data, clock, LSBFIRST, 0xc6);
-  shiftOut(data, clock, LSBFIRST, char_2);
-  digitalWrite(strobe, HIGH);
-
-  digitalWrite(strobe, LOW);
-  shiftOut(data, clock, LSBFIRST, 0xc8);
-  shiftOut(data, clock, LSBFIRST, char_3);
-  digitalWrite(strobe, HIGH);
- 
-  digitalWrite(strobe, LOW);
-  shiftOut(data, clock, LSBFIRST, 0xca); // last digit
-  shiftOut(data, clock, LSBFIRST, char_4);
-  digitalWrite(strobe, HIGH);
-
-  delay(500);
+  delay(200);
 }
