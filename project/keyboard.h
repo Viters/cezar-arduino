@@ -9,9 +9,9 @@
 #define CHAR_8 0x7f
 #define CHAR_9 0x6f 
 #define CHAR_A 0x77
-#define CHAR_B 0x7f
+#define CHAR_B 0x7c
 #define CHAR_C 0x39
-#define CHAR_D 0x3f
+#define CHAR_D 0x5e
 #define CHAR_E 0x79
 #define CHAR_F 0x71
 
