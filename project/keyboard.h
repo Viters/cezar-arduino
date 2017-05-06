@@ -9,14 +9,11 @@
 #define CHAR_8 0x7f
 #define CHAR_9 0x6f 
 #define CHAR_A 0x77
-#define CHAR_B 0x7f
+#define CHAR_b 0x7c
 #define CHAR_C 0x39
-#define CHAR_D 0x3f
+#define CHAR_d 0x5e
 #define CHAR_E 0x79
 #define CHAR_F 0x71
-
-char KEYBOARD[] = {CHAR_0, CHAR_1, CHAR_2, CHAR_3, CHAR_4, CHAR_5, CHAR_6,
-  CHAR_7, CHAR_8, CHAR_9, CHAR_A, CHAR_B, CHAR_C, CHAR_D, CHAR_E, CHAR_F};
 
 #define DISP_1 0xc0
 #define DISP_2 0xc2
@@ -27,4 +24,57 @@ char KEYBOARD[] = {CHAR_0, CHAR_1, CHAR_2, CHAR_3, CHAR_4, CHAR_5, CHAR_6,
 #define DISP_7 0xcc
 #define DISP_8 0xce
 
-char DISPLAYS[] = {DISP_1, DISP_2, DISP_3, DISP_4, DISP_5, DISP_6, DISP_7, DISP_8};
+uint8_t DISPLAYS[] = {DISP_1, DISP_2, DISP_3, DISP_4, DISP_5, DISP_6, DISP_7, DISP_8};
+
+#define LED_1 0xc1
+#define LED_2 0xc3
+#define LED_3 0xc5
+#define LED_4 0xc7
+#define LED_5 0xc9
+#define LED_6 0xcb
+#define LED_7 0xcd
+#define LED_8 0xcf
+
+#define BUTTON_1 1
+#define BUTTON_2 2
+
+uint8_t map_input_to_arduino(char input) {
+  switch(input) {
+    case '0':
+      return CHAR_0;
+    case '1':
+      return CHAR_1;
+    case '2':
+      return CHAR_2;
+    case '3':
+      return CHAR_3;
+    case '4':
+      return CHAR_4;
+    case '5':
+      return CHAR_5;
+    case '6':
+      return CHAR_6;
+    case '7':
+      return CHAR_7;
+    case '8':
+      return CHAR_8;
+    case '9':
+      return CHAR_9;
+    case 'A':
+      return CHAR_A;
+    case 'b':
+    case 'B':
+      return CHAR_b;
+    case 'C':
+      return CHAR_C;
+    case 'd':
+    case 'D':
+      return CHAR_d;
+    case 'E':
+      return CHAR_E;
+    case 'F':
+      return CHAR_F;
+  }
+
+  return 0;
+}

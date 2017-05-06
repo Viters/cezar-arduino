@@ -9,6 +9,7 @@ void sendCommand(uint8_t value)
   digitalWrite(strobe, LOW);
   shiftOut(data, clock, LSBFIRST, value);
   digitalWrite(strobe, HIGH);
+  
 }
  
 void reset()
@@ -34,17 +35,108 @@ void setup()
   reset();
 }
 
+uint8_t code[8];
+uint8_t received_chars[9];
+short delay_timer = 100;
+uint8_t repeat = 0;
+uint8_t display_iter = 0;
+uint8_t char_iter = 48;
+
+void recv_with_end_maker() {
+  static uint8_t current_iter = 0;
+  char end_maker = '\n';
+  char rc;
+  uint8_t num_chars;
+  uint8_t should_map;  
+ 
+  while (Serial.available() > 0) {
+    rc = Serial.read();
+
+    if (rc == 'C' && current_iter == 0) {
+      num_chars = 9;
+      should_map = 1;
+      display_iter = 0;
+    }
+
+    if (rc == 'D' && current_iter == 0) {
+      num_chars = 5;
+      should_map = 0;
+    }
+
+    if (rc == 'N' && current_iter == 0) {
+      num_chars = 3;
+      should_map = 0;
+    }
+
+    if (rc != end_maker) {
+      if (should_map == 1 && current_iter > 0) {
+        code[current_iter - 1] = map_input_to_arduino(rc);
+      } else {
+        received_chars[current_iter] = rc - '0';
+      }
+      ++current_iter;
+    }
+
+    if (current_iter == num_chars) {
+      current_iter = 0;
+    }
+  }
+
+  if (received_chars[0] == 'D' - '0') {
+    delay_timer = received_chars[1] * 1000 + received_chars[2] * 100 + received_chars[3] * 10 + received_chars[4];
+    received_chars[0] = 0;
+  }
+}
+
+
+
 void loop()
 {
   sendCommand(0x44);  // set single address
  
-  for (int i = 0; i < 8; ++i) {
-    int char_to_display = KEYBOARD[random(0, 15)];
-    digitalWrite(strobe, LOW);
-    shiftOut(data, clock, LSBFIRST, DISPLAYS[i]);
-    shiftOut(data, clock, LSBFIRST, char_to_display);
-    digitalWrite(strobe, HIGH);
+  recv_with_end_maker();
+
+  if (display_iter == 0) {
+    for (int i = 0; i < 16; i++) {
+      digitalWrite(strobe, LOW);
+      shiftOut(data, clock, LSBFIRST, DISPLAYS[0] + i);
+      shiftOut(data, clock, LSBFIRST, 0);
+      digitalWrite(strobe, HIGH);
+    }
   }
 
-  delay(200);
+  if (display_iter < 8 && received_chars[0] == 'C' - '0') {  
+
+    if (char_iter == 58) {
+      char_iter = 65;
+    }
+
+    digitalWrite(strobe, LOW);
+    shiftOut(data, clock, LSBFIRST, DISPLAYS[display_iter]);
+    shiftOut(data, clock, LSBFIRST, map_input_to_arduino(char_iter));
+    digitalWrite(strobe, HIGH);
+
+    ++repeat;
+
+    if (repeat >= 2 * 16 - 16) {
+      if (map_input_to_arduino(char_iter) == code[display_iter]) {
+        digitalWrite(strobe, LOW);
+        shiftOut(data, clock, LSBFIRST, DISPLAYS[display_iter] + 1);
+        shiftOut(data, clock, LSBFIRST, 1);
+        digitalWrite(strobe, HIGH);
+        ++display_iter;   
+        repeat = 0;
+        char_iter = 48;
+      }
+    }
+
+    ++char_iter;
+
+    if (char_iter == 71) {
+      char_iter = 48;
+    }
+
+  }
+  
+  delay(delay_timer);
 }
