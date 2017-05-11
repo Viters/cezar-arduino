@@ -3,34 +3,34 @@
 const int strobe = 7;
 const int data = 8;
 const int clock = 9;
- 
+
 void sendCommand(uint8_t value)
 {
   digitalWrite(strobe, LOW);
   shiftOut(data, clock, LSBFIRST, value);
   digitalWrite(strobe, HIGH);
-  
+
 }
- 
+
 void reset()
 {
   sendCommand(0x40); // set auto increment mode
   digitalWrite(strobe, LOW);
   shiftOut(data, clock, LSBFIRST, 0xc0);   // set starting address to 0
-  for(uint8_t i = 0; i < 16; i++)
+  for (uint8_t i = 0; i < 16; i++)
   {
     shiftOut(data, clock, LSBFIRST, 0x00);
   }
   digitalWrite(strobe, HIGH);
 }
- 
+
 void setup()
 {
   Serial.begin(9600);
   pinMode(strobe, OUTPUT);
   pinMode(clock, OUTPUT);
   pinMode(data, OUTPUT);
- 
+
   sendCommand(0x8f);  // activate and set brightness to max
   reset();
 }
@@ -49,8 +49,8 @@ void recv_with_end_maker() {
   char end_maker = '\n';
   char rc;
   uint8_t num_chars;
-  uint8_t should_map;  
- 
+  uint8_t should_map;
+
   while (Serial.available() > 0) {
     rc = Serial.read();
 
@@ -89,7 +89,7 @@ void recv_with_end_maker() {
     received_chars[0] = 0;
   }
 
-  if(received_chars[0] == 'N' - '0'){
+  if (received_chars[0] == 'N' - '0') {
     times_to_disp = received_chars[1] * 10 + received_chars[2];
   }
 }
@@ -99,37 +99,39 @@ void readButtons()
   uint8_t buttons = 0;
   digitalWrite(strobe, LOW);
   shiftOut(data, clock, LSBFIRST, 0x42);
- 
+
   pinMode(data, INPUT);
- 
+
   for (uint8_t i = 0; i < 4; i++)
   {
     uint8_t v = shiftIn(data, clock, LSBFIRST) << i;
     buttons |= v;
   }
- 
+
   pinMode(data, OUTPUT);
   digitalWrite(strobe, HIGH);
 
-  if(buttons == 1){
+  if (buttons == 1) {
     is_hacking = !is_hacking;
   }
 
-  if(buttons == 2 && is_hacking){
-    display_iter = 0; 
+  if (buttons == 2 && is_hacking) {
+    display_iter = 0;
+    char_iter = 48;
+    repeat = 0;
   }
 
-  Serial.println(buttons);
+  //Serial.println(buttons); //debug
 }
 
 void loop()
 {
   sendCommand(0x44);  // set single address
- 
+
   recv_with_end_maker();
   readButtons();
 
-  if (display_iter == 0) {
+  if (display_iter == 0 && repeat == 0 && char_iter == 48) {
     for (int i = 0; i < 16; i++) {
       digitalWrite(strobe, LOW);
       shiftOut(data, clock, LSBFIRST, DISPLAYS[0] + i);
@@ -138,7 +140,7 @@ void loop()
     }
   }
 
-  if (display_iter < 8 && is_hacking /*&& received_chars[0] == 'C' - '0'*/) {  
+  if (display_iter < 8 && is_hacking /*&& received_chars[0] == 'C' - '0'*/) {
 
     if (char_iter == 58) {
       char_iter = 65;
@@ -157,7 +159,7 @@ void loop()
         shiftOut(data, clock, LSBFIRST, DISPLAYS[display_iter] + 1);
         shiftOut(data, clock, LSBFIRST, 1);
         digitalWrite(strobe, HIGH);
-        ++display_iter;   
+        ++display_iter;
         repeat = 0;
         char_iter = 48;
       }
@@ -170,6 +172,6 @@ void loop()
     }
 
   }
-  
+
   delay(delay_timer);
 }
