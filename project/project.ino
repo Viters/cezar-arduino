@@ -35,6 +35,7 @@ void setup()
   reset();
 }
 
+boolean is_hacking = true;
 uint8_t code[8] = {CHAR_1, CHAR_1, CHAR_1, CHAR_1, CHAR_1, CHAR_1, CHAR_1, CHAR_1};
 uint8_t received_chars[9];
 short delay_timer = 100;
@@ -93,13 +94,40 @@ void recv_with_end_maker() {
   }
 }
 
+void readButtons()
+{
+  uint8_t buttons = 0;
+  digitalWrite(strobe, LOW);
+  shiftOut(data, clock, LSBFIRST, 0x42);
+ 
+  pinMode(data, INPUT);
+ 
+  for (uint8_t i = 0; i < 4; i++)
+  {
+    uint8_t v = shiftIn(data, clock, LSBFIRST) << i;
+    buttons |= v;
+  }
+ 
+  pinMode(data, OUTPUT);
+  digitalWrite(strobe, HIGH);
 
+  if(buttons == 1){
+    is_hacking = !is_hacking;
+  }
+
+  if(buttons == 2 && is_hacking){
+    display_iter = 0; 
+  }
+
+  Serial.println(buttons);
+}
 
 void loop()
 {
   sendCommand(0x44);  // set single address
  
   recv_with_end_maker();
+  readButtons();
 
   if (display_iter == 0) {
     for (int i = 0; i < 16; i++) {
@@ -110,7 +138,7 @@ void loop()
     }
   }
 
-  if (display_iter < 8 /*&& received_chars[0] == 'C' - '0'*/) {  
+  if (display_iter < 8 && is_hacking /*&& received_chars[0] == 'C' - '0'*/) {  
 
     if (char_iter == 58) {
       char_iter = 65;
