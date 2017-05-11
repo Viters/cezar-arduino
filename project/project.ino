@@ -35,9 +35,10 @@ void setup()
   reset();
 }
 
-uint8_t code[8];
+uint8_t code[8] = {CHAR_1, CHAR_1, CHAR_1, CHAR_1, CHAR_1, CHAR_1, CHAR_1, CHAR_1};
 uint8_t received_chars[9];
 short delay_timer = 100;
+short times_to_disp = 2;
 uint8_t repeat = 0;
 uint8_t display_iter = 0;
 uint8_t char_iter = 48;
@@ -86,6 +87,10 @@ void recv_with_end_maker() {
     delay_timer = received_chars[1] * 1000 + received_chars[2] * 100 + received_chars[3] * 10 + received_chars[4];
     received_chars[0] = 0;
   }
+
+  if(received_chars[0] == 'N' - '0'){
+    times_to_disp = received_chars[1] * 10 + received_chars[2];
+  }
 }
 
 
@@ -105,7 +110,7 @@ void loop()
     }
   }
 
-  if (display_iter < 8 && received_chars[0] == 'C' - '0') {  
+  if (display_iter < 8 /*&& received_chars[0] == 'C' - '0'*/) {  
 
     if (char_iter == 58) {
       char_iter = 65;
@@ -118,7 +123,7 @@ void loop()
 
     ++repeat;
 
-    if (repeat >= 2 * 16 - 16) {
+    if (repeat >= times_to_disp * 16 - 16) {
       if (map_input_to_arduino(char_iter) == code[display_iter]) {
         digitalWrite(strobe, LOW);
         shiftOut(data, clock, LSBFIRST, DISPLAYS[display_iter] + 1);
