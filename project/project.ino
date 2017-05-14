@@ -4,7 +4,7 @@ const int strobe = 7;
 const int data = 8;
 const int clock = 9;
 
-void sendCommand(uint8_t value)
+void send_command(byte value)
 {
   digitalWrite(strobe, LOW);
   shiftOut(data, clock, LSBFIRST, value);
@@ -12,16 +12,20 @@ void sendCommand(uint8_t value)
 
 }
 
-void reset()
+void display_on_screen(byte position, byte value) 
 {
-  sendCommand(0x40); // set auto increment mode
   digitalWrite(strobe, LOW);
-  shiftOut(data, clock, LSBFIRST, 0xc0);   // set starting address to 0
-  for (uint8_t i = 0; i < 16; i++)
-  {
-    shiftOut(data, clock, LSBFIRST, 0x00);
-  }
+  shiftOut(data, clock, LSBFIRST, position);
+  shiftOut(data, clock, LSBFIRST, value);
   digitalWrite(strobe, HIGH);
+}
+
+void reset_display()
+{
+  for (byte i = 0; i < 16; i++)
+  {
+    display_on_screen(0xc0 + i, 0x00);
+  }
 }
 
 void setup()
@@ -31,80 +35,77 @@ void setup()
   pinMode(clock, OUTPUT);
   pinMode(data, OUTPUT);
 
-  sendCommand(0x8f);  // activate and set brightness to max
-  reset();
+  send_command(0x8f);  // activate and set brightness to max
+  reset_display();
 }
 
 boolean is_hacking = true;
-uint8_t code[8] = {CHAR_1, CHAR_1, CHAR_1, CHAR_1, CHAR_1, CHAR_1, CHAR_1, CHAR_1};
-uint8_t received_chars[9];
+byte code[8] = {CHAR_1, CHAR_1, CHAR_1, CHAR_1, CHAR_1, CHAR_1, CHAR_1, CHAR_1};
 short delay_timer = 100;
-short times_to_disp = 2;
-uint8_t repeat = 0;
-uint8_t display_iter = 0;
-uint8_t char_iter = 48;
+byte times_to_disp = 2;
+byte repeat = 0;
+byte display_iter = 0;
+byte char_iter = 48;
 
 void recv_with_end_maker() {
-  static uint8_t current_iter = 0;
+  byte current_iter = 0;
   char end_maker = '\n';
   char rc;
-  uint8_t num_chars;
-  uint8_t should_map;
+  byte should_map = 0;
+  byte current_command;
+  byte received_data[4];
 
   while (Serial.available() > 0) {
     rc = Serial.read();
+    
+    if (rc == end_maker) {
+      break;
+    }
 
-    if (rc == 'C' && current_iter == 0) {
-      num_chars = 9;
+    if (current_iter == 0) {
+      current_command = rc;
+    }
+
+    if (current_command == 'C') {
       should_map = 1;
       display_iter = 0;
+      repeat = 0;
+      char_iter = 48;
     }
 
-    if (rc == 'D' && current_iter == 0) {
-      num_chars = 5;
-      should_map = 0;
+    if (should_map == 1 && current_iter > 0) {
+      code[current_iter - 1] = map_input_to_arduino(rc);
+    } else {
+      received_data[current_iter - 1] = rc - '0';
     }
-
-    if (rc == 'N' && current_iter == 0) {
-      num_chars = 3;
-      should_map = 0;
-    }
-
-    if (rc != end_maker) {
-      if (should_map == 1 && current_iter > 0) {
-        code[current_iter - 1] = map_input_to_arduino(rc);
-      } else {
-        received_chars[current_iter] = rc - '0';
-      }
-      ++current_iter;
-    }
-
-    if (current_iter == num_chars) {
-      current_iter = 0;
-    }
+    
+    ++current_iter;
   }
 
-  if (received_chars[0] == 'D' - '0') {
-    delay_timer = received_chars[1] * 1000 + received_chars[2] * 100 + received_chars[3] * 10 + received_chars[4];
-    received_chars[0] = 0;
+  if (current_command == 'D') {
+    delay_timer = received_data[0] * 1000 + 
+                  received_data[1] * 100 +
+                  received_data[2] * 10 +
+                  received_data[3];
   }
 
-  if (received_chars[0] == 'N' - '0') {
-    times_to_disp = received_chars[1] * 10 + received_chars[2];
+  if (current_command == 'N') {
+    times_to_disp = received_data[0] * 10 + 
+                    received_data[1];
   }
 }
 
-void readButtons()
+void read_buttons()
 {
-  uint8_t buttons = 0;
+  byte buttons = 0;
   digitalWrite(strobe, LOW);
   shiftOut(data, clock, LSBFIRST, 0x42);
 
   pinMode(data, INPUT);
 
-  for (uint8_t i = 0; i < 4; i++)
+  for (byte i = 0; i < 4; i++)
   {
-    uint8_t v = shiftIn(data, clock, LSBFIRST) << i;
+    byte v = shiftIn(data, clock, LSBFIRST) << i;
     buttons |= v;
   }
 
@@ -126,39 +127,29 @@ void readButtons()
 
 void loop()
 {
-  sendCommand(0x44);  // set single address
+  send_command(0x44);  // set single address
 
   recv_with_end_maker();
-  readButtons();
+  read_buttons();
 
-  if (display_iter == 0 && repeat == 0 && char_iter == 48) {
-    for (int i = 0; i < 16; i++) {
-      digitalWrite(strobe, LOW);
-      shiftOut(data, clock, LSBFIRST, DISPLAYS[0] + i);
-      shiftOut(data, clock, LSBFIRST, 0);
-      digitalWrite(strobe, HIGH);
-    }
+  if (display_iter == 0) {
+    reset_display();
   }
 
-  if (display_iter < 8 && is_hacking /*&& received_chars[0] == 'C' - '0'*/) {
+  if (display_iter < 8 && is_hacking) {
 
     if (char_iter == 58) {
       char_iter = 65;
     }
 
-    digitalWrite(strobe, LOW);
-    shiftOut(data, clock, LSBFIRST, DISPLAYS[display_iter]);
-    shiftOut(data, clock, LSBFIRST, map_input_to_arduino(char_iter));
-    digitalWrite(strobe, HIGH);
+    display_on_screen(DISPLAYS[display_iter], map_input_to_arduino(char_iter));
 
     ++repeat;
 
     if (repeat >= times_to_disp * 16 - 16) {
       if (map_input_to_arduino(char_iter) == code[display_iter]) {
-        digitalWrite(strobe, LOW);
-        shiftOut(data, clock, LSBFIRST, DISPLAYS[display_iter] + 1);
-        shiftOut(data, clock, LSBFIRST, 1);
-        digitalWrite(strobe, HIGH);
+        display_on_screen(DISPLAYS[display_iter] + 1, 1);
+
         ++display_iter;
         repeat = 0;
         char_iter = 48;
