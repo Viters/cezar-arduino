@@ -110,7 +110,7 @@ void read_buttons()
 
   if (button_code == 1) {
     hacking_in_progress = !hacking_in_progress;
-    delay(400);
+    delay(300);
   }
 
   if (button_code == 2 && hacking_in_progress) {
@@ -122,8 +122,8 @@ void loop()
 {
   send_command(0x44);
 
-  recv_with_end_maker();
-  read_buttons();
+  
+
 
   if (display_iter == 0) {
     reset_display();
@@ -154,6 +154,11 @@ void loop()
       char_iter = 48;
     }
   }
+  
+  for (int i = 0; i < delay_timer / 10; ++i) {
+    recv_with_end_maker();
+    read_buttons();
+    delay(10);    
+  }
 
-  delay(delay_timer);
 }
