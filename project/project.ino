@@ -1,15 +1,15 @@
 #include "keyboard.h"
+#include "variables.h"
 
-const int strobe = 7;
-const int data = 8;
-const int clock = 9;
+const byte strobe = 7;
+const byte data = 8;
+const byte clock = 9;
 
 void send_command(byte value)
 {
   digitalWrite(strobe, LOW);
   shiftOut(data, clock, LSBFIRST, value);
   digitalWrite(strobe, HIGH);
-
 }
 
 void display_on_screen(byte position, byte value) 
@@ -35,21 +35,19 @@ void setup()
   pinMode(clock, OUTPUT);
   pinMode(data, OUTPUT);
 
-  send_command(0x8f);  // activate and set brightness to max
+  send_command(0x8f);
   reset_display();
 }
 
-boolean is_hacking = true;
-byte code[8] = {CHAR_1, CHAR_1, CHAR_1, CHAR_1, CHAR_1, CHAR_1, CHAR_1, CHAR_1};
-short delay_timer = 100;
-byte times_to_disp = 2;
-byte repeat = 0;
-byte display_iter = 0;
-byte char_iter = 48;
+
+void reset_hacking_progress() {
+  display_iter = 0;
+  repeat = 0;
+  char_iter = 48;
+}
 
 void recv_with_end_maker() {
   byte current_iter = 0;
-  char end_maker = '\n';
   char rc;
   byte should_map = 0;
   byte current_command;
@@ -58,7 +56,7 @@ void recv_with_end_maker() {
   while (Serial.available() > 0) {
     rc = Serial.read();
     
-    if (rc == end_maker) {
+    if (rc == '\n') {
       break;
     }
 
@@ -68,9 +66,7 @@ void recv_with_end_maker() {
 
     if (current_command == 'C') {
       should_map = 1;
-      display_iter = 0;
-      repeat = 0;
-      char_iter = 48;
+      reset_hacking_progress();
     }
 
     if (should_map == 1 && current_iter > 0) {
@@ -97,7 +93,7 @@ void recv_with_end_maker() {
 
 void read_buttons()
 {
-  byte buttons = 0;
+  byte button_code = 0;
   digitalWrite(strobe, LOW);
   shiftOut(data, clock, LSBFIRST, 0x42);
 
@@ -106,28 +102,25 @@ void read_buttons()
   for (byte i = 0; i < 4; i++)
   {
     byte v = shiftIn(data, clock, LSBFIRST) << i;
-    buttons |= v;
+    button_code |= v;
   }
 
   pinMode(data, OUTPUT);
   digitalWrite(strobe, HIGH);
 
-  if (buttons == 1) {
-    is_hacking = !is_hacking;
+  if (button_code == 1) {
+    hacking_in_progress = !hacking_in_progress;
+    delay(400);
   }
 
-  if (buttons == 2 && is_hacking) {
-    display_iter = 0;
-    char_iter = 48;
-    repeat = 0;
+  if (button_code == 2 && hacking_in_progress) {
+    reset_hacking_progress();
   }
-
-  //Serial.println(buttons); //debug
 }
 
 void loop()
 {
-  send_command(0x44);  // set single address
+  send_command(0x44);
 
   recv_with_end_maker();
   read_buttons();
@@ -136,19 +129,18 @@ void loop()
     reset_display();
   }
 
-  if (display_iter < 8 && is_hacking) {
-
+  if (display_iter < 8 && hacking_in_progress) {
     if (char_iter == 58) {
       char_iter = 65;
     }
 
-    display_on_screen(DISPLAYS[display_iter], map_input_to_arduino(char_iter));
+    display_on_screen(0xc0 + display_iter * 2, map_input_to_arduino(char_iter));
 
     ++repeat;
 
     if (repeat >= times_to_disp * 16 - 16) {
       if (map_input_to_arduino(char_iter) == code[display_iter]) {
-        display_on_screen(DISPLAYS[display_iter] + 1, 1);
+        display_on_screen(0xc0 + display_iter * 2 + 1, 1);
 
         ++display_iter;
         repeat = 0;
@@ -161,7 +153,6 @@ void loop()
     if (char_iter == 71) {
       char_iter = 48;
     }
-
   }
 
   delay(delay_timer);

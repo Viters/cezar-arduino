@@ -15,29 +15,6 @@
 #define CHAR_E 0x79
 #define CHAR_F 0x71
 
-#define DISP_1 0xc0
-#define DISP_2 0xc2
-#define DISP_3 0xc4
-#define DISP_4 0xc6
-#define DISP_5 0xc8
-#define DISP_6 0xca
-#define DISP_7 0xcc
-#define DISP_8 0xce
-
-uint8_t DISPLAYS[] = {DISP_1, DISP_2, DISP_3, DISP_4, DISP_5, DISP_6, DISP_7, DISP_8};
-
-#define LED_1 0xc1
-#define LED_2 0xc3
-#define LED_3 0xc5
-#define LED_4 0xc7
-#define LED_5 0xc9
-#define LED_6 0xcb
-#define LED_7 0xcd
-#define LED_8 0xcf
-
-#define BUTTON_1 1
-#define BUTTON_2 2
-
 uint8_t map_input_to_arduino(char input) {
   switch(input) {
     case '0':
