@@ -1,23 +1,20 @@
 #include "keyboard.h"
-#include "variables.h"
-
-const byte strobe = 7;
-const byte data = 8;
-const byte clock = 9;
+#include "globals.h"
 
 void send_command(byte value)
 {
-  digitalWrite(strobe, LOW);
-  shiftOut(data, clock, LSBFIRST, value);
-  digitalWrite(strobe, HIGH);
+  digitalWrite(STROBE, LOW);
+  shiftOut(DATA, CLOCK, LSBFIRST, value);
+  digitalWrite(STROBE, HIGH);
 }
 
 void display_on_screen(byte position, byte value) 
 {
-  digitalWrite(strobe, LOW);
-  shiftOut(data, clock, LSBFIRST, position);
-  shiftOut(data, clock, LSBFIRST, value);
-  digitalWrite(strobe, HIGH);
+  send_command(0x44);  
+  digitalWrite(STROBE, LOW);
+  shiftOut(DATA, CLOCK, LSBFIRST, position);
+  shiftOut(DATA, CLOCK, LSBFIRST, value);
+  digitalWrite(STROBE, HIGH);
 }
 
 void reset_display()
@@ -31,9 +28,9 @@ void reset_display()
 void setup()
 {
   Serial.begin(9600);
-  pinMode(strobe, OUTPUT);
-  pinMode(clock, OUTPUT);
-  pinMode(data, OUTPUT);
+  pinMode(STROBE, OUTPUT);
+  pinMode(CLOCK, OUTPUT);
+  pinMode(DATA, OUTPUT);
 
   send_command(0x8f);
   reset_display();
@@ -41,17 +38,17 @@ void setup()
 
 
 void reset_hacking_progress() {
-  display_iter = 0;
-  repeat = 0;
-  char_iter = 48;
+  SEGMENT_ITER = 0;
+  REPEAT_ITER = 0;
+  CHAR_ITER = 48;
 }
 
 void recv_with_end_maker() {
   byte current_iter = 0;
-  char rc;
+  byte rc;
   byte should_map = 0;
   byte current_command;
-  byte received_data[4];
+  byte nums_from_input[4];
 
   while (Serial.available() > 0) {
     delay(20);
@@ -72,50 +69,50 @@ void recv_with_end_maker() {
     }
 
     if (should_map == 1 && current_iter > 0) {
-      code[current_iter - 1] = map_input_to_arduino(rc);
+      CURRENT_CODE[current_iter - 1] = map_input_to_arduino(rc);
     } else {
-      received_data[current_iter - 1] = rc - '0';
+      nums_from_input[current_iter - 1] = rc - '0';
     }
     
     ++current_iter;
   }
 
   if (current_command == 'D') {
-    delay_timer = received_data[0] * 1000 + 
-                  received_data[1] * 100 +
-                  received_data[2] * 10 +
-                  received_data[3];
+    ONE_CHAR_DISP = nums_from_input[0] * 1000 + 
+                  nums_from_input[1] * 100 +
+                  nums_from_input[2] * 10 +
+                  nums_from_input[3];
   }
 
   if (current_command == 'N') {
-    times_to_disp = received_data[0] * 10 + 
-                    received_data[1];
+    ONE_CHAR_TIMES = nums_from_input[0] * 10 + 
+                    nums_from_input[1];
   }
 }
 
 void read_buttons()
 {
   byte button_code = 0;
-  digitalWrite(strobe, LOW);
-  shiftOut(data, clock, LSBFIRST, 0x42);
+  digitalWrite(STROBE, LOW);
+  shiftOut(DATA, CLOCK, LSBFIRST, 0x42);
 
-  pinMode(data, INPUT);
+  pinMode(DATA, INPUT);
 
   for (byte i = 0; i < 4; i++)
   {
-    byte v = shiftIn(data, clock, LSBFIRST) << i;
+    byte v = shiftIn(DATA, CLOCK, LSBFIRST) << i;
     button_code |= v;
   }
 
-  pinMode(data, OUTPUT);
-  digitalWrite(strobe, HIGH);
+  pinMode(DATA, OUTPUT);
+  digitalWrite(STROBE, HIGH);
 
   if (button_code == 1) {
-    hacking_in_progress = !hacking_in_progress;
+    HACKING_IN_PROGRESS = !HACKING_IN_PROGRESS;
     delay(300);
   }
 
-  if (button_code == 2 && hacking_in_progress) {
+  if (button_code == 2 && HACKING_IN_PROGRESS) {
     reset_hacking_progress();
     delay(300);
   }
@@ -123,49 +120,50 @@ void read_buttons()
 
 void loop()
 {
+  on_loop();
+
   unsigned long current_milis = millis();
-
-  send_command(0x44);
-  if (display_iter < 8 && hacking_in_progress) {
-    display_on_screen(0xc0 + display_iter * 2, map_input_to_arduino(char_iter));
+  if (current_milis - PREVIOUS_MILIS > ONE_CHAR_DISP) {
+    PREVIOUS_MILIS = current_milis;
+    on_update();
   }
-  
+}
 
-  if (current_milis - previous_milis > delay_timer) {
-    previous_milis = current_milis;
+void on_loop() {
+  if (SEGMENT_ITER < 8 && HACKING_IN_PROGRESS) {
+    display_on_screen(0xc0 + SEGMENT_ITER * 2, map_input_to_arduino(CHAR_ITER));
+  }
 
-    if (display_iter == 0 && repeat == 0) {
+  recv_with_end_maker();
+  read_buttons();
+}
+
+void on_update() {
+  if (SEGMENT_ITER == 0 && REPEAT_ITER == 0) {
       reset_display();
     }
 
-    if (display_iter < 8 && hacking_in_progress) {
-      
+  if (SEGMENT_ITER < 8 && HACKING_IN_PROGRESS) {
+    ++REPEAT_ITER;
 
-      ++repeat;
+    if (REPEAT_ITER >= ONE_CHAR_TIMES * 16 - 16) {
+      if (map_input_to_arduino(CHAR_ITER) == CURRENT_CODE[SEGMENT_ITER]) {
+        display_on_screen(0xc0 + SEGMENT_ITER * 2 + 1, 1);
 
-      if (repeat >= times_to_disp * 16 - 16) {
-        if (map_input_to_arduino(char_iter) == code[display_iter]) {
-          display_on_screen(0xc0 + display_iter * 2 + 1, 1);
-
-          ++display_iter;
-          repeat = 0;
-          char_iter = 48;
-        }
-      }
-
-      ++char_iter;
-
-      if (char_iter == 58) {
-        char_iter = 65;
-      }
-
-      if (char_iter == 71) {
-        char_iter = 48;
+        ++SEGMENT_ITER;
+        REPEAT_ITER = 0;
+        CHAR_ITER = 48;
       }
     }
-  }
-  
-  recv_with_end_maker();
-  read_buttons();
 
+    ++CHAR_ITER;
+
+    if (CHAR_ITER == 58) {
+      CHAR_ITER = 65;
+    }
+
+    if (CHAR_ITER == 71) {
+      CHAR_ITER = 48;
+    }
+  }
 }
