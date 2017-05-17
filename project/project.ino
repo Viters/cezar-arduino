@@ -18,6 +18,7 @@ void reset_hacking_progress()
   SEGMENT_ITER = 0;
   REPEAT_ITER = 0;
   CHAR_ITER = 48;
+  reset_display();
 }
 
 void read_from_serial_port() 
@@ -115,10 +116,6 @@ void on_loop()
 
 void on_update() 
 {
-  if (SEGMENT_ITER == 0 && REPEAT_ITER == 0) {
-    reset_display();
-  }
-
   if (SEGMENT_ITER < 8 && HACKING_IN_PROGRESS) {
     ++REPEAT_ITER;
 
