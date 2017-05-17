@@ -103,7 +103,8 @@ void loop()
   }
 }
 
-void on_loop() {
+void on_loop() 
+{
   if (SEGMENT_ITER < 8 && HACKING_IN_PROGRESS) {
     display_on_screen(0xc0 + SEGMENT_ITER * 2, map_input_to_arduino(CHAR_ITER));
   }
