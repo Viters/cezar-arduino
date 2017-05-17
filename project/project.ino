@@ -1,29 +1,6 @@
 #include "keyboard.h"
 #include "globals.h"
-
-void send_command(byte value)
-{
-  digitalWrite(STROBE, LOW);
-  shiftOut(DATA, CLOCK, LSBFIRST, value);
-  digitalWrite(STROBE, HIGH);
-}
-
-void display_on_screen(byte position, byte value) 
-{
-  send_command(0x44);  
-  digitalWrite(STROBE, LOW);
-  shiftOut(DATA, CLOCK, LSBFIRST, position);
-  shiftOut(DATA, CLOCK, LSBFIRST, value);
-  digitalWrite(STROBE, HIGH);
-}
-
-void reset_display()
-{
-  for (byte i = 0; i < 16; i++)
-  {
-    display_on_screen(0xc0 + i, 0x00);
-  }
-}
+#include "arduino.h"
 
 void setup()
 {
@@ -36,14 +13,15 @@ void setup()
   reset_display();
 }
 
-
-void reset_hacking_progress() {
+void reset_hacking_progress() 
+{
   SEGMENT_ITER = 0;
   REPEAT_ITER = 0;
   CHAR_ITER = 48;
 }
 
-void recv_with_end_maker() {
+void read_from_serial_port() 
+{
   byte current_iter = 0;
   byte rc;
   byte should_map = 0;
@@ -52,7 +30,6 @@ void recv_with_end_maker() {
 
   while (Serial.available() > 0) {
     delay(20);
-
     rc = Serial.read();
     
     if (rc == '\n') {
@@ -78,34 +55,31 @@ void recv_with_end_maker() {
   }
 
   if (current_command == 'D') {
-    ONE_CHAR_DISP = nums_from_input[0] * 1000 + 
-                  nums_from_input[1] * 100 +
-                  nums_from_input[2] * 10 +
-                  nums_from_input[3];
+    set_one_char_display_length(nums_from_input);    
   }
 
   if (current_command == 'N') {
-    ONE_CHAR_TIMES = nums_from_input[0] * 10 + 
-                    nums_from_input[1];
+    set_one_char_repeat_times(nums_from_input);
   }
+}
+
+void set_one_char_display_length(byte nums[])
+{
+  ONE_CHAR_DISP = nums[0] * 1000 + 
+                  nums[1] * 100 +
+                  nums[2] * 10 +
+                  nums[3];
+}
+
+void set_one_char_repeat_times(byte nums[])
+{
+  ONE_CHAR_TIMES = nums[0] * 10 + 
+                   nums[1];
 }
 
 void read_buttons()
 {
-  byte button_code = 0;
-  digitalWrite(STROBE, LOW);
-  shiftOut(DATA, CLOCK, LSBFIRST, 0x42);
-
-  pinMode(DATA, INPUT);
-
-  for (byte i = 0; i < 4; i++)
-  {
-    byte v = shiftIn(DATA, CLOCK, LSBFIRST) << i;
-    button_code |= v;
-  }
-
-  pinMode(DATA, OUTPUT);
-  digitalWrite(STROBE, HIGH);
+  byte button_code = check_buttons_status();
 
   if (button_code == 1) {
     HACKING_IN_PROGRESS = !HACKING_IN_PROGRESS;
@@ -134,36 +108,50 @@ void on_loop() {
     display_on_screen(0xc0 + SEGMENT_ITER * 2, map_input_to_arduino(CHAR_ITER));
   }
 
-  recv_with_end_maker();
+  read_from_serial_port();
   read_buttons();
 }
 
-void on_update() {
+void on_update() 
+{
   if (SEGMENT_ITER == 0 && REPEAT_ITER == 0) {
-      reset_display();
-    }
+    reset_display();
+  }
 
   if (SEGMENT_ITER < 8 && HACKING_IN_PROGRESS) {
     ++REPEAT_ITER;
 
-    if (REPEAT_ITER >= ONE_CHAR_TIMES * 16 - 16) {
-      if (map_input_to_arduino(CHAR_ITER) == CURRENT_CODE[SEGMENT_ITER]) {
-        display_on_screen(0xc0 + SEGMENT_ITER * 2 + 1, 1);
+    if (is_current_iteration_last() && is_current_char_valid()) {
+      display_on_screen(0xc0 + SEGMENT_ITER * 2 + 1, 1);
 
-        ++SEGMENT_ITER;
-        REPEAT_ITER = 0;
-        CHAR_ITER = 48;
-      }
+      ++SEGMENT_ITER;
+      REPEAT_ITER = 0;
+      CHAR_ITER = 47;
     }
 
     ++CHAR_ITER;
 
-    if (CHAR_ITER == 58) {
-      CHAR_ITER = 65;
-    }
+    shift_char_iter_if_needed(); 
+  }
+}
 
-    if (CHAR_ITER == 71) {
-      CHAR_ITER = 48;
-    }
+boolean is_current_iteration_last()
+{
+  return REPEAT_ITER >= ONE_CHAR_TIMES * 16 - 16;
+}
+
+boolean is_current_char_valid()
+{
+  return map_input_to_arduino(CHAR_ITER) == CURRENT_CODE[SEGMENT_ITER];
+}
+
+void shift_char_iter_if_needed() 
+{
+  if (CHAR_ITER == 58) {
+    CHAR_ITER = 65;
+  }
+
+  if (CHAR_ITER == 71) {
+    CHAR_ITER = 48;
   }
 }
