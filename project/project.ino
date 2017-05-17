@@ -54,6 +54,8 @@ void recv_with_end_maker() {
   byte received_data[4];
 
   while (Serial.available() > 0) {
+    delay(20);
+
     rc = Serial.read();
     
     if (rc == '\n') {
@@ -115,50 +117,55 @@ void read_buttons()
 
   if (button_code == 2 && hacking_in_progress) {
     reset_hacking_progress();
+    delay(300);
   }
 }
 
 void loop()
 {
-  send_command(0x44);
+  unsigned long current_milis = millis();
 
+  send_command(0x44);
+  if (display_iter < 8 && hacking_in_progress) {
+    display_on_screen(0xc0 + display_iter * 2, map_input_to_arduino(char_iter));
+  }
   
 
+  if (current_milis - previous_milis > delay_timer) {
+    previous_milis = current_milis;
 
-  if (display_iter == 0) {
-    reset_display();
-  }
-
-  if (display_iter < 8 && hacking_in_progress) {
-    if (char_iter == 58) {
-      char_iter = 65;
+    if (display_iter == 0 && repeat == 0) {
+      reset_display();
     }
 
-    display_on_screen(0xc0 + display_iter * 2, map_input_to_arduino(char_iter));
+    if (display_iter < 8 && hacking_in_progress) {
+      
 
-    ++repeat;
+      ++repeat;
 
-    if (repeat >= times_to_disp * 16 - 16) {
-      if (map_input_to_arduino(char_iter) == code[display_iter]) {
-        display_on_screen(0xc0 + display_iter * 2 + 1, 1);
+      if (repeat >= times_to_disp * 16 - 16) {
+        if (map_input_to_arduino(char_iter) == code[display_iter]) {
+          display_on_screen(0xc0 + display_iter * 2 + 1, 1);
 
-        ++display_iter;
-        repeat = 0;
+          ++display_iter;
+          repeat = 0;
+          char_iter = 48;
+        }
+      }
+
+      ++char_iter;
+
+      if (char_iter == 58) {
+        char_iter = 65;
+      }
+
+      if (char_iter == 71) {
         char_iter = 48;
       }
     }
-
-    ++char_iter;
-
-    if (char_iter == 71) {
-      char_iter = 48;
-    }
   }
   
-  for (int i = 0; i < delay_timer / 10; ++i) {
-    recv_with_end_maker();
-    read_buttons();
-    delay(10);    
-  }
+  recv_with_end_maker();
+  read_buttons();
 
 }

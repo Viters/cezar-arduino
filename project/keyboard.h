@@ -1,21 +1,21 @@
-#define CHAR_0 0x3f
-#define CHAR_1 0x6
-#define CHAR_2 0x5b
-#define CHAR_3 0x4f
-#define CHAR_4 0x66
-#define CHAR_5 0x6d
-#define CHAR_6 0x7d
-#define CHAR_7 0x7
-#define CHAR_8 0x7f
-#define CHAR_9 0x6f 
-#define CHAR_A 0x77
-#define CHAR_b 0x7c
-#define CHAR_C 0x39
-#define CHAR_d 0x5e
-#define CHAR_E 0x79
-#define CHAR_F 0x71
+const byte CHAR_0 = 0x3f;
+const byte CHAR_1 = 0x6;
+const byte CHAR_2 = 0x5b;
+const byte CHAR_3 = 0x4f;
+const byte CHAR_4 = 0x66;
+const byte CHAR_5 = 0x6d;
+const byte CHAR_6 = 0x7d;
+const byte CHAR_7 = 0x7;
+const byte CHAR_8 = 0x7f;
+const byte CHAR_9 = 0x6f;
+const byte CHAR_A = 0x77;
+const byte CHAR_b = 0x7c;
+const byte CHAR_C = 0x39;
+const byte CHAR_d = 0x5e;
+const byte CHAR_E = 0x79;
+const byte CHAR_F = 0x71;
 
-uint8_t map_input_to_arduino(char input) {
+const byte map_input_to_arduino(char input) {
   switch(input) {
     case '0':
       return CHAR_0;
