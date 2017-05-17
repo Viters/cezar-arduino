@@ -95,42 +95,54 @@ void read_buttons()
 
 void loop()
 {
-  on_loop();
-
-  unsigned long current_milis = millis();
-  if (current_milis - PREVIOUS_MILIS > ONE_CHAR_DISP) {
-    PREVIOUS_MILIS = current_milis;
-    on_update();
-  }
-}
-
-void on_loop() 
-{
-  if (SEGMENT_ITER < 8 && HACKING_IN_PROGRESS) {
-    display_on_screen(0xc0 + SEGMENT_ITER * 2, map_input_to_arduino(CHAR_ITER));
-  }
-
+  boolean should_update = if_should_update();
+  
+  display_currently_processed_char();
   read_from_serial_port();
   read_buttons();
-}
 
-void on_update() 
-{
-  if (SEGMENT_ITER < 8 && HACKING_IN_PROGRESS) {
+  light_led_if_current_char_is_valid();
+
+  if (should_update && is_hacking_in_progress()) {
     ++REPEAT_ITER;
-
-    if (is_current_iteration_last() && is_current_char_valid()) {
-      display_on_screen(0xc0 + SEGMENT_ITER * 2 + 1, 1);
-
-      ++SEGMENT_ITER;
-      REPEAT_ITER = 0;
-      CHAR_ITER = 47;
-    }
-
     ++CHAR_ITER;
-
     shift_char_iter_if_needed(); 
   }
+}
+
+boolean if_should_update()
+{
+  unsigned long current_milis = millis();
+  boolean should_update = false;
+  if (current_milis - PREVIOUS_MILIS > ONE_CHAR_DISP) {
+    PREVIOUS_MILIS = current_milis;
+    should_update = true;
+  }
+
+  return should_update;
+}
+
+void display_currently_processed_char() 
+{
+  if (is_hacking_in_progress()) {
+    display_on_screen(0xc0 + SEGMENT_ITER * 2, map_input_to_arduino(CHAR_ITER));
+  }
+}
+
+void light_led_if_current_char_is_valid()
+{
+  if (is_current_iteration_last() && is_current_char_valid()) {
+    display_on_screen(0xc0 + SEGMENT_ITER * 2 + 1, 1);
+
+    ++SEGMENT_ITER;
+    REPEAT_ITER = 0;
+    CHAR_ITER = 48;
+  }
+}
+
+boolean is_hacking_in_progress() 
+{
+  return SEGMENT_ITER < 8 && HACKING_IN_PROGRESS;
 }
 
 boolean is_current_iteration_last()
