@@ -4,7 +4,7 @@
 volatile byte CURRENT_CODE[8] = {CHAR_b, CHAR_A, CHAR_A, CHAR_d, CHAR_A, CHAR_5, CHAR_5, CHAR_5};
 
 // How long should one char persist (in ms)
-volatile short ONE_CHAR_DISP = 300;
+volatile short ONE_CHAR_DISP = 50;
 
 // How many times should display iterate over correct char before stopping
 volatile byte ONE_CHAR_TIMES = 2;

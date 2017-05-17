@@ -86,7 +86,7 @@ void read_buttons()
     delay(300);
   }
 
-  if (button_code == 2 && HACKING_IN_PROGRESS) {
+  if (button_code == 2 && SEGMENT_ITER >= 8) {
     reset_hacking_progress();
     delay(300);
   }
