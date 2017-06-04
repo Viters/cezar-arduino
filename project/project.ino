@@ -1,6 +1,7 @@
 #include "keyboard.h"
 #include "globals.h"
 #include "arduino.h"
+#include "errors.h"
 
 void setup()
 {
@@ -25,43 +26,90 @@ void read_from_serial_port()
 {
   byte current_iter = 0;
   byte rc;
-  byte should_map = 0;
   byte current_command;
-  byte nums_from_input[4];
+  byte received_data[9];
 
   while (Serial.available() > 0) {
     delay(20);
     rc = Serial.read();
     
+    if (current_iter == 0) {
+      current_command = rc;
+    } else if (current_iter < 10) {
+      received_data[current_iter - 1] = rc;
+    }
+    
     if (rc == '\n') {
       break;
     }
 
-    if (current_iter == 0) {
-      current_command = rc;
-    }
-
-    if (current_command == 'C') {
-      should_map = 1;
-      reset_hacking_progress();
-    }
-
-    if (should_map == 1 && current_iter > 0) {
-      CURRENT_CODE[current_iter - 1] = map_input_to_arduino(rc);
-    } else {
-      nums_from_input[current_iter - 1] = rc - '0';
-    }
-    
     ++current_iter;
   }
 
-  if (current_command == 'D') {
-    set_one_char_display_length(nums_from_input);    
+  if (current_iter > 0) {
+    switch (current_command) {
+      case 'C':
+        validate_and_process_code(received_data);
+        return;
+      case 'D':
+        validate_and_process_delay(received_data);
+        return;
+      case 'N':
+        validate_and_process_repeat(received_data);
+        return;
+      default:
+        Serial.println(NOT_SUPPORTED_CMD_ERR);
+        return;
+    }
+  }
+}
+
+void validate_and_process_code(byte data[])
+{
+  for (byte i = 0; i < 8; ++i) {
+    if (data[i] < '0' || (data[i] > '9' && data[i] < 'A') || (data[i] > 'F' && data[i] < 'a') || data[i] > 'f') {
+      Serial.println(WRONG_DATA_IN_CMD_ERR);
+      return;
+    }
   }
 
-  if (current_command == 'N') {
-    set_one_char_repeat_times(nums_from_input);
+  for (byte i = 0; i < 8; ++i) {
+    CURRENT_CODE[i] = map_input_to_arduino(data[i]);
   }
+
+  reset_hacking_progress();
+}
+
+void validate_and_process_delay(byte data[])
+{
+  for (byte i = 0; i < 4; ++i) {
+    if (data[i] < '0' || data[i] > '9') {
+      Serial.println(WRONG_DATA_IN_CMD_ERR);
+      return;
+    }
+  }
+  
+  for (byte i = 0; i < 4; ++i) {
+    data[i] = data[i] - '0';
+  }
+
+  set_one_char_display_length(data);
+}
+
+void validate_and_process_repeat(byte data[])
+{
+  for (byte i = 0; i < 2; ++i) {
+    if (data[i] < '0' || data[i] > '9') {
+      Serial.println(WRONG_DATA_IN_CMD_ERR);
+      return;
+    }
+  }
+
+  for (byte i = 0; i < 2; ++i) {
+    data[i] = data[i] - '0';
+  }
+
+  set_one_char_repeat_times(data);
 }
 
 void set_one_char_display_length(byte nums[])
@@ -97,6 +145,7 @@ void loop()
 {
   boolean should_update = if_should_update();
   
+  mock_other_segments();
   display_currently_processed_char();
   read_from_serial_port();
   read_buttons();
@@ -122,7 +171,16 @@ boolean if_should_update()
   return should_update;
 }
 
-void display_currently_processed_char() 
+void mock_other_segments()
+{
+  if (is_hacking_in_progress()) {
+    for (byte i = 2 * SEGMENT_ITER; i < 15; i += 2) {
+      display_on_screen(0xc0 + i, map_input_to_arduino(CHAR_ITER));
+    }
+  }
+}
+
+void display_currently_processed_char()
 {
   if (is_hacking_in_progress()) {
     display_on_screen(0xc0 + SEGMENT_ITER * 2, map_input_to_arduino(CHAR_ITER));
